@@ -1,184 +1,158 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Studio Mobile</title>
 
 <style>
-body{
+body {
   margin:0;
-  font-family:Arial;
+  font-family: Arial;
   background:#111;
   color:white;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
 }
 
-header{
-  background:#1f1f1f;
-  padding:12px;
+header {
   text-align:center;
-  font-weight:bold;
+  padding:15px;
+  background:#000;
+  font-size:20px;
 }
 
-#tabs{
+.tabs {
   display:flex;
-  background:#222;
 }
 
-.tab{
+.tab {
   flex:1;
-  padding:10px;
   text-align:center;
+  padding:12px;
+  background:#222;
   cursor:pointer;
 }
 
-.active{
-  background:#007acc;
+.tab.active {
+  background:#1976d2;
 }
 
-#chatView, #previewView{
-  flex:1;
-  display:none;
-  flex-direction:column;
-}
-
-#chatView.active, #previewView.active{
-  display:flex;
-}
-
-#messages{
-  flex:1;
+#chat, #preview {
+  height:65vh;
   overflow:auto;
   padding:10px;
+  background:#1e1e1e;
 }
 
-#inputArea{
+#preview iframe {
+  width:100%;
+  height:100%;
+  border:none;
+}
+
+.input-box {
   display:flex;
-  border-top:1px solid #333;
 }
 
-input{
+input {
   flex:1;
   padding:12px;
   border:none;
-  outline:none;
 }
 
-button{
+button {
   padding:12px;
   border:none;
-  background:#007acc;
+  background:#1976d2;
   color:white;
-  cursor:pointer;
-}
-
-iframe{
-  flex:1;
-  border:none;
-  background:white;
-}
-
-#actionButtons{
-  display:flex;
-  gap:5px;
-  padding:5px;
-  background:#1a1a1a;
 }
 </style>
 </head>
+
 <body>
 
 <header>AI Studio Mobile</header>
 
-<div id="tabs">
-  <div class="tab active" onclick="switchTab('chat')">Chat</div>
-  <div class="tab" onclick="switchTab('preview')">Preview</div>
+<div class="tabs">
+  <div class="tab active" onclick="showChat()">Chat</div>
+  <div class="tab" onclick="showPreview()">Preview</div>
 </div>
 
-<div id="chatView" class="active">
-  <div id="messages"></div>
-  <div id="inputArea">
-    <input id="userInput" placeholder="Nhập tin nhắn..." />
-    <button onclick="sendMessage()">Gửi</button>
-  </div>
+<div id="chat"></div>
+
+<div id="preview" style="display:none;">
+  <iframe id="frame"></iframe>
+  <button onclick="exportCode()">Xuất HTML</button>
 </div>
 
-<div id="previewView">
-  <div id="actionButtons">
-    <button onclick="exportCode()">Xuất Code</button>
-    <button onclick="exportZip()">Xuất ZIP</button>
-  </div>
-  <iframe id="previewFrame"></iframe>
+<div class="input-box">
+  <input id="message" placeholder="Nhập tin nhắn...">
+  <button onclick="send()">Gửi</button>
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script>
 let generatedCode = "";
 
-function switchTab(tab){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('#chatView,#previewView').forEach(v=>v.classList.remove('active'));
-
-  if(tab==='chat'){
-    document.querySelectorAll('.tab')[0].classList.add('active');
-    document.getElementById('chatView').classList.add('active');
-  }else{
-    document.querySelectorAll('.tab')[1].classList.add('active');
-    document.getElementById('previewView').classList.add('active');
-  }
+function showChat(){
+  document.getElementById("chat").style.display="block";
+  document.getElementById("preview").style.display="none";
 }
 
-async function sendMessage(){
-  const input = document.getElementById("userInput");
-  const messages = document.getElementById("messages");
-  const text = input.value;
-  if(!text) return;
-
-  messages.innerHTML += `<div><b>Bạn:</b> ${text}</div>`;
-
-  const res = await fetch("https://ai-dev-backend.vercel.app/api/ai",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body: JSON.stringify({ message:text })
-  });
-
-  const data = await res.json();
-  const reply = data.reply || "Không có phản hồi";
-
-  messages.innerHTML += `<div style="color:lightgreen;"><b>AI:</b><pre>${reply}</pre></div>`;
-  messages.scrollTop = messages.scrollHeight;
-
-  if(text.toLowerCase().includes("tạo") || 
-     text.toLowerCase().includes("xây dựng")){
-     
-     generatedCode = reply;
-     document.getElementById("previewFrame").srcdoc = generatedCode;
-  }
-
-  input.value="";
+function showPreview(){
+  document.getElementById("chat").style.display="none";
+  document.getElementById("preview").style.display="block";
+  document.getElementById("frame").srcdoc = generatedCode;
 }
 
 function exportCode(){
   const blob = new Blob([generatedCode], {type:"text/html"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "index.html";
+  a.download = "app.html";
   a.click();
 }
 
-function exportZip(){
-  const zip = new JSZip();
-  zip.file("index.html", generatedCode);
-  zip.generateAsync({type:"blob"}).then(function(content){
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(content);
-    a.download = "project.zip";
-    a.click();
-  });
+async function send() {
+  const input = document.getElementById("message");
+  const chatBox = document.getElementById("chat");
+  const message = input.value;
+
+  if (!message) return;
+
+  chatBox.innerHTML += "<p><b>Bạn:</b> " + message + "</p>";
+  input.value = "";
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: message
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.reply) {
+      chatBox.innerHTML += "<p><b>AI:</b> " + data.reply + "</p>";
+
+      if (
+        message.toLowerCase().includes("tạo") ||
+        message.toLowerCase().includes("xây dựng")
+      ) {
+        generatedCode = data.reply;
+      }
+
+    } else {
+      chatBox.innerHTML += "<p><b>AI:</b> Lỗi server</p>";
+    }
+
+  } catch (error) {
+    chatBox.innerHTML += "<p><b>AI:</b> Lỗi kết nối</p>";
+  }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 </script>
 
